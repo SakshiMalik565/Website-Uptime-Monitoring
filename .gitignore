@@ -1,0 +1,57 @@
+# ==========================================
+# Security & Secret Ignore Rules
+# ==========================================
+*.pem
+*.key
+*.pub
+*.pkcs12
+*.pfx
+id_rsa*
+*.crt
+*.cer
+
+# Cloud & AWS credentials
+.aws/
+credentials
+*.credentials
+.env
+.env.*
+*.secret
+
+# Production & Local Host Inventories (Keep real IPs local)
+ansible/inventory/hosts.ini
+ansible/inventory/inventory.ini
+ansible/inventory/production.ini
+ansible/hosts
+hosts.ini
+*.inventory
+
+# Sensitive logs and bash history
+*.log
+.bash_history
+ansible.log
+recovery.log
+nagios.log
+
+# Terraform State (Extension is unapplied)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+
+# OS & Editor artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Local backup / temporary files
+*.tmp
+*.bak
+scratch/

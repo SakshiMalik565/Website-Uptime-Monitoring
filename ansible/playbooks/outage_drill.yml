@@ -1,0 +1,43 @@
+---
+# ==============================================================================
+# Ansible Controlled Outage Drill Playbook
+# Target: puppet-agent (Apache Web Server Host)
+# Purpose: Simulates web service outage for Nagios detection verification
+# ==============================================================================
+
+- name: Simulate Controlled Web Service Outage
+  hosts: puppet_agent
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: 1. Stop Apache HTTP Server
+      ansible.builtin.systemd:
+        name: apache2
+        state: stopped
+
+    - name: 2. Confirm Apache service is stopped
+      ansible.builtin.systemd:
+        name: apache2
+      register: service_check
+      failed_when: service_check.status.ActiveState == 'active'
+
+    - name: 3. Record failure drill in audit log
+      ansible.builtin.lineinfile:
+        path: /var/log/ansible-recovery.log
+        create: true
+        mode: '0640'
+        owner: root
+        group: adm
+        line: "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] DRILL: Service 'apache2' stopped intentionally for Nagios failure detection drill."
+
+    - name: 4. Display outage drill status
+      ansible.builtin.debug:
+        msg:
+          - "=========================================================="
+          - "OUTAGE DRILL EXECUTED"
+          - "Target Host    : {{ inventory_hostname }} ({{ ansible_host }})"
+          - "Service State  : {{ service_check.status.ActiveState }} (Stopped)"
+          - "Action Required: Check Nagios Core web interface or run check_http"
+          - "Expected State : CRITICAL (Connection Refused / Failed)"
+          - "=========================================================="

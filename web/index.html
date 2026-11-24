@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Web Service - INT333 DevOps Project</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-green: #10b981;
+            --accent-blue: #38bdf8;
+            --border-color: #334155;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 720px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+        }
+        .badge-status {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .badge-status::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+        h1 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        p.subtitle {
+            color: var(--text-secondary);
+            margin-top: 6px;
+            font-size: 0.95rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 25px;
+        }
+        .card {
+            background-color: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .card-title {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .card-value {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+        .details-box {
+            margin-top: 25px;
+            padding: 16px;
+            background-color: rgba(56, 189, 248, 0.05);
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Production Web Service</h1>
+                <p class="subtitle">INT333: DevOps Advance Configuration Management</p>
+            </div>
+            <div class="badge-status">SERVICE ACTIVE</div>
+        </div>
+
+        <p style="color: var(--text-primary); font-size: 1rem; line-height: 1.5;">
+            This endpoint is continuously monitored by <strong>Nagios Core</strong> and maintained via declarative desired-state configuration by <strong>Puppet</strong>. Service recovery is automated through <strong>Ansible</strong> playbooks.
+        </p>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Instance Role</div>
+                <div class="card-value">puppet-agent</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Web Server</div>
+                <div class="card-value">Apache HTTPD (Port 80)</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Managed By</div>
+                <div class="card-value">Puppet Master</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Monitoring Target</div>
+                <div class="card-value">Nagios HTTP Probe</div>
+            </div>
+        </div>
+
+        <div class="details-box">
+            <strong>Architecture Highlights:</strong>
+            <ul style="margin-left: 20px; margin-top: 8px;">
+                <li><strong>Puppet Server:</strong> Enforces configuration idempotence and remediates drift.</li>
+                <li><strong>Ansible Control Node:</strong> Orchestrates narrowly scoped service restarts upon failure.</li>
+                <li><strong>Nagios Monitoring:</strong> Tracks availability states with granular check/retry thresholds.</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            Managed Infrastructure &bull; Academic Project Submission &bull; INT333
+        </div>
+    </div>
+</body>
+</html>

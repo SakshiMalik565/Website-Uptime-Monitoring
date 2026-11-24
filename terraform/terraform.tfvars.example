@@ -1,0 +1,5 @@
+# Example variables file (copy to terraform.tfvars for future independent deployment)
+aws_region    = "eu-north-1"
+instance_type = "t3.small"
+key_name      = "devops-kp"
+admin_ip_cidr = "203.0.113.10/32" # Replace with your current workstation external IP /32

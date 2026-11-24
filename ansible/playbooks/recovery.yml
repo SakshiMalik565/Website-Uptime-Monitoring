@@ -1,0 +1,64 @@
+---
+# ==============================================================================
+# Ansible Controlled Recovery Playbook
+# Target: puppet-agent (Apache Web Server Host)
+# Purpose: Narrowly scoped recovery action to restart Apache and verify health
+# ==============================================================================
+
+- name: Controlled Web Service Recovery
+  hosts: puppet_agent
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: 1. Verify current Apache2 service status prior to intervention
+      ansible.builtin.systemd:
+        name: apache2
+      register: pre_check_status
+
+    - name: Display pre-recovery service state
+      ansible.builtin.debug:
+        msg: "Pre-recovery Apache state: ActiveState={{ pre_check_status.status.ActiveState | default('unknown') }}, SubState={{ pre_check_status.status.SubState | default('unknown') }}"
+
+    - name: 2. Execute controlled restart of Apache HTTP Server
+      ansible.builtin.systemd:
+        name: apache2
+        state: restarted
+        enabled: true
+      register: restart_result
+
+    - name: 3. Wait for port 80 to respond on localhost
+      ansible.builtin.wait_for:
+        port: 80
+        host: 127.0.0.1
+        delay: 1
+        timeout: 20
+        state: started
+
+    - name: 4. Perform HTTP verification check on local endpoint
+      ansible.builtin.uri:
+        url: http://127.0.0.1/
+        method: GET
+        status_code: 200
+        return_content: false
+      register: http_test
+
+    - name: 5. Record recovery execution to audit log
+      ansible.builtin.lineinfile:
+        path: /var/log/ansible-recovery.log
+        create: true
+        mode: '0640'
+        owner: root
+        group: adm
+        line: "[{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}] Service 'apache2' successfully recovered by Ansible playbook. HTTP Status: {{ http_test.status }}."
+
+    - name: 6. Output recovery confirmation
+      ansible.builtin.debug:
+        msg:
+          - "=========================================================="
+          - "CONTROLLED RECOVERY COMPLETED SUCCESSFULLY"
+          - "Target Host    : {{ inventory_hostname }} ({{ ansible_host }})"
+          - "Service Status : Active (Running)"
+          - "HTTP Probe     : Status 200 OK"
+          - "Audit Entry    : Written to /var/log/ansible-recovery.log"
+          - "=========================================================="
