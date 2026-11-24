@@ -111,13 +111,13 @@ The implementation runs on three dedicated Amazon EC2 virtual machines residing 
 ## 4. Implementation Details
 
 ### 4.1 Puppet Master-Agent Configuration
-The Apache web server is packaged into a reusable Puppet module `apache_website` located at `/etc/puppetlabs/code/environments/production/modules/apache_website/`:
+The Apache web server is packaged into a reusable Puppet module `apache_website`. During initial node inspection, the Puppet Server's active `environmentpath` was identified as `/etc/puppet/code/environments` (coexisting with standard `/etc/puppetlabs/code`). To maintain operational integrity, the module and site manifests are deployed into `/etc/puppet/code/environments/production/`:
 - **`manifests/install.pp`:** Ensures package `apache2` is installed via `apt`.
 - **`manifests/config.pp`:** Manages `/var/www/html/index.html` with ownership `www-data:www-data`, mode `0644`, and declared file source.
 - **`manifests/service.pp`:** Ensures service `apache2` is in state `running` and enabled at system boot.
 - **`manifests/init.pp`:** Chains the resources with ordering and notification:
   $$\text{install} \longrightarrow \text{config} \stackrel{\sim}{\longrightarrow} \text{service}$$
-- **`manifests/site.pp`:** Assigns `apache_website` to all matching agent nodes.
+- **`manifests/site.pp`:** Assigns `apache_website` to all matching agent nodes, cleanly superseding any legacy web manifests.
 
 ### 4.2 Nagios Core Monitoring Architecture
 Nagios is configured on `ansible` with dedicated object configurations:

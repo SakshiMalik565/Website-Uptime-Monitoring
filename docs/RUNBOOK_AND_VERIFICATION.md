@@ -53,39 +53,52 @@ nc -zv -w 3 <PUPPET_AGENT_PRIVATE_IP> 22
 
 ## Stage 2: Puppet Configuration and Desired-State Enforcement
 
+> [!NOTE]
+> **Puppet Code Path Environment Discovery:**
+> In this environment, Puppet Server's active `environmentpath` is configured as `/etc/puppet/code/environments` (rather than `/etc/puppetlabs/code/environments`). Ensure modules and `site.pp` are placed in `/etc/puppet/code/environments/production`. Any legacy conflicting manifests (e.g., prior Nginx definitions) should be backed up and replaced with the Apache module.
+
 ### 2.1 On `puppet-master`: Deploy the Apache Website Module
-1. Navigate to Puppet environment code directory:
+1. Navigate to the active Puppet environment code directory:
    ```bash
-   cd /etc/puppetlabs/code/environments/production
+   cd /etc/puppet/code/environments/production
    ```
-2. Ensure directory structure exists:
+2. Back up any legacy `site.pp`:
+   ```bash
+   sudo cp /etc/puppet/code/environments/production/manifests/site.pp /etc/puppet/code/environments/production/manifests/site.pp.legacy.bak 2>/dev/null || true
+   ```
+3. Ensure directory structure exists:
    ```bash
    sudo mkdir -p modules/apache_website/manifests modules/apache_website/files manifests
    ```
-3. Copy the project files from `puppet/` into the production environment:
-   - Copy `puppet/modules/apache_website/manifests/*` &rarr; `/etc/puppetlabs/code/environments/production/modules/apache_website/manifests/`
-   - Copy `puppet/modules/apache_website/files/index.html` &rarr; `/etc/puppetlabs/code/environments/production/modules/apache_website/files/index.html`
-   - Copy `puppet/manifests/site.pp` &rarr; `/etc/puppetlabs/code/environments/production/manifests/site.pp`
+4. Copy the project files from `puppet/` (or from `/etc/puppetlabs/code/environments/production/`) into the active environment:
+   - Copy `modules/apache_website/manifests/*` &rarr; `/etc/puppet/code/environments/production/modules/apache_website/manifests/`
+   - Copy `modules/apache_website/files/index.html` &rarr; `/etc/puppet/code/environments/production/modules/apache_website/files/index.html`
+   - Copy `manifests/site.pp` &rarr; `/etc/puppet/code/environments/production/manifests/site.pp`
 
-4. Validate Puppet syntax before applying:
+5. Validate Puppet syntax before applying:
    ```bash
-   sudo puppet parser validate /etc/puppetlabs/code/environments/production/manifests/site.pp
-   sudo puppet parser validate /etc/puppetlabs/code/environments/production/modules/apache_website/manifests/*.pp
+   sudo /opt/puppetlabs/bin/puppet parser validate /etc/puppet/code/environments/production/manifests/site.pp
+   sudo /opt/puppetlabs/bin/puppet parser validate /etc/puppet/code/environments/production/modules/apache_website/manifests/*.pp
    ```
    *Expected Result:* Clean exit with 0 errors.
 
-5. Verify Puppet Server service status:
+6. Verify Puppet Server service status:
    ```bash
    sudo systemctl status puppetserver --no-pager
    ```
    *(Note: If Puppet Server fails with Out-Of-Memory on t3.small, set JVM heap to 512m in `/etc/default/puppetserver` and restart).*
 
-### 2.2 On `puppet-agent`: Execute Catalog and Verify Web Server
-1. Trigger catalog retrieval from Puppet Master:
+### 2.2 On `puppet-agent`: Resolve Port Contention and Execute Catalog
+1. Ensure legacy or failed Nginx is stopped and disabled so Apache exclusively binds port 80:
    ```bash
-   sudo puppet agent -t
+   sudo systemctl stop nginx 2>/dev/null || true
+   sudo systemctl disable nginx 2>/dev/null || true
    ```
-   *Expected Result:* Puppet compiles catalog, installs `apache2`, creates `/var/www/html/index.html`, and starts service `apache2`. Exit code 2 (changes applied).
+2. Trigger catalog retrieval from Puppet Master:
+   ```bash
+   sudo /opt/puppetlabs/bin/puppet agent -t
+   ```
+   *Expected Result:* Puppet compiles the active Apache catalog, updates `/var/www/html/index.html`, and ensures service `apache2` is running. Exit code 2 (changes applied).
 
 2. Verify Idempotence (Second Run):
    ```bash
