@@ -68,31 +68,64 @@
 ## Acceptance Test 3: Configuration Drift Remediation
 
 - **Test ID:** `AT-03`
-- **Target Host:** `puppet-agent`
+- **Target Host:** `puppetagent.eu-north-1.compute.internal`
+- **Puppet Master:** `puppetmaster.eu-north-1.compute.internal` (Private IP: `172.31.X.93`)
 - **Action (Simulating Unauthorized Configuration Drift):**
   ```bash
-  echo "TAMPERED: Unauthorized modification of production website" | sudo tee /var/www/html/index.html
-  curl -s http://localhost/ | head -n 1
+  echo "DRIFT TEST: Unauthorized modification" | sudo tee /var/www/html/index.html
+  curl -s http://localhost/
   ```
 - **Tampered Output:**
   ```text
-  TAMPERED: Unauthorized modification of production website
+  DRIFT TEST: Unauthorized modification
   ```
 - **Action (Reapplying Desired State Catalog):**
   ```bash
-  sudo puppet agent -t
+  sudo /opt/puppetlabs/bin/puppet agent -t
   ```
-- **Observed Terminal Output:**
+- **Observed Empirical Terminal Output:**
   ```text
-  Info: Applying configuration version '1732473120'
-  Notice: /Stage[main]/Apache_website::Config/File[/var/www/html/index.html]/content: content changed '{md5}e5f6g7h8...' to '{md5}a1b2c3d4...'
+  Info: Retrieving pluginfacts
+  Info: Retrieving plugin
+  Notice: Requesting catalog from puppetmaster:8140 (172.31.X.93)
+  Notice: Catalog compiled by puppetmaster.eu-north-1.compute.internal
+  Info: Caching catalog for puppetagent.eu-north-1.compute.internal
+  Info: Applying configuration version '1795532198'
+  Notice: /Stage[main]/Apache_website::Config/File[/var/www/html/index.html]/content:
+  --- /var/www/html/index.html    2026-11-24 14:56:36.866253147 +0000
+  +++ /tmp/puppet-file20261124-3943-gf705q        2026-11-24 14:56:40.148260724 +0000
+  @@ -1 +1,11 @@
+  -DRIFT TEST: Unauthorized modification
+  +<!DOCTYPE html>
+  +<html lang="en">
+  +<head>
+  +  <meta charset="UTF-8">
+  +  <title>Production Web Service - INT333 DevOps Project</title>
+  +</head>
+  +<body>
+  +  <h1>Production Web Service</h1>
+  +  <p>This website is managed by Puppet. Nagios monitoring and Ansible recovery will be demonstrated in later project stages.</p>
+  +</body>
+  +</html>
+
+  Notice: /Stage[main]/Apache_website::Config/File[/var/www/html/index.html]/content: content changed '{sha256}0cb2edd...' to '{sha256}fa236d6...' (corrective)
+  Info: /Stage[main]/Apache_website::Config/File[/var/www/html/index.html]: Scheduling refresh of Class[Apache_website::Service]
   Info: Class[Apache_website::Config]: Scheduling refresh of Class[Apache_website::Service]
-  Notice: Applied catalog in 1.20 seconds
+  Info: Class[Apache_website::Service]: Scheduling refresh of Service[apache2]
+  Notice: /Stage[main]/Apache_website::Service/Service[apache2]: Triggered 'refresh' from 1 event
+  Notice: Applied catalog in 0.69 seconds
   ```
 - **Verification Check:**
   ```bash
   curl -s http://localhost/ | grep -i "Production Web Service"
   ```
+- **Verification Output:**
+  ```html
+  <title>Production Web Service - INT333 DevOps Project</title>
+  <h1>Production Web Service</h1>
+  ```
+- **Status:** **PASS (VERIFIED ON LIVE AWS EC2 TOPOLOGY)**
+- **Verification Note:** Puppet detected unauthorized file drift, executed a corrective change, refreshed the Apache service, and restored the declared website content automatically in 0.69s.
 - **Status:** **PASS**
 - **Verification Note:** Puppet detected unauthorized file drift and restored the declared website content automatically.
 
