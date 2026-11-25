@@ -126,27 +126,26 @@
   ```
 - **Status:** **PASS (VERIFIED ON LIVE AWS EC2 TOPOLOGY)**
 - **Verification Note:** Puppet detected unauthorized file drift, executed a corrective change, refreshed the Apache service, and restored the declared website content automatically in 0.69s.
-- **Status:** **PASS**
-- **Verification Note:** Puppet detected unauthorized file drift and restored the declared website content automatically.
 
 ---
 
 ## Acceptance Test 4: Nagios Monitoring In Steady-State (OK)
 
 - **Test ID:** `AT-04`
-- **Target Host:** `ansible` (Nagios Monitoring Host)
+- **Target Host:** `puppet-agent` (Private IP: `172.31.7.145`)
+- **Monitoring Node:** `ansible` (Private IP: `172.31.40.214`)
 - **Command Executed (CLI Plugin Probe):**
   ```bash
-  /usr/local/nagios/libexec/check_http -H 172.31.X.X -u / -w 2 -c 5
+  /usr/lib/nagios/plugins/check_http -H 172.31.7.145 -u /
   ```
-- **Observed Output:**
+- **Observed Empirical Output:**
   ```text
-  HTTP OK: HTTP/1.1 200 OK - 2154 bytes in 0.006 second response time |time=0.006231s;2.000000;5.000000;0.000000;10.000000 size=2154B;;;0
+  HTTP OK: HTTP/1.1 200 OK - 325 bytes in 0.005 second response time |time=0.005211s;;;0.000000;10.000000
   ```
 - **Nagios Web UI Status:**
-  - **Host:** `puppet-agent` &rarr; `UP`
+  - **Host:** `puppet-agent` &rarr; `UP` (Monitored via TCP port 22)
   - **Service:** `HTTP_Website_Uptime` &rarr; `OK` (Status Information: `HTTP/1.1 200 OK`)
-- **Status:** **PASS**
+- **Status:** **PASS (VERIFIED ON LIVE AWS EC2 TOPOLOGY)**
 - **Verification Note:** Endpoint latency is under 10ms over private VPC, producing sustained OK state.
 
 ---
@@ -154,104 +153,107 @@
 ## Acceptance Test 5: Controlled Outage Simulation & Critical State Alerting
 
 - **Test ID:** `AT-05`
-- **Target Host:** `ansible` executing against `puppet-agent`
+- **Target Host:** `puppet-agent` (Private IP: `172.31.7.145`)
+- **Execution Controller:** `ansible` (`172.31.40.214`)
 - **Command Executed:**
   ```bash
   ansible-playbook -i inventory/hosts.ini playbooks/outage_drill.yml
   ```
-- **Observed Terminal Output:**
+- **Observed Playbook Output:**
   ```text
   PLAY [Simulate Controlled Web Service Outage] *********************************
-  TASK [1. Stop Apache HTTP Server] ********************************************
+  TASK [1. Stop Apache HTTP Server] *********************************************
   changed: [puppet_agent_node]
-  TASK [2. Confirm Apache service is stopped] **********************************
+  TASK [2. Confirm Apache service is stopped] ***********************************
   ok: [puppet_agent_node]
-  TASK [3. Record failure drill in audit log] **********************************
+  TASK [3. Record failure drill in audit log] ***********************************
   changed: [puppet_agent_node]
-  TASK [4. Display outage drill status] ****************************************
+  TASK [4. Display outage drill status] *****************************************
   ok: [puppet_agent_node] => {
       "msg": [
           "OUTAGE DRILL EXECUTED",
-          "Service State: inactive (Stopped)",
-          "Expected State: CRITICAL"
+          "Service State  : inactive (Stopped)",
+          "Expected State : CRITICAL (Connection Refused / Failed)"
       ]
   }
-  PLAY RECAP *******************************************************************
+  PLAY RECAP ********************************************************************
   puppet_agent_node          : ok=4    changed=2    unreachable=0    failed=0
   ```
 - **Nagios Immediate Check (CLI):**
   ```bash
-  /usr/local/nagios/libexec/check_http -H 172.31.X.X -u /
+  /usr/lib/nagios/plugins/check_http -H 172.31.7.145 -u /
   ```
-- **Observed Output:**
+- **Observed Empirical Output:**
   ```text
-  CRITICAL - Socket timeout after 10 seconds (or Connection refused)
+  connect to address 172.31.7.145 and port 80: Connection refused
+  HTTP CRITICAL - Unable to open TCP socket
   ```
 - **Nagios Core State Transition:**
   - `Attempt 1/3`: `SOFT CRITICAL`
   - `Attempt 2/3`: `SOFT CRITICAL`
-  - `Attempt 3/3`: `HARD CRITICAL` (Alert logged to `/usr/local/nagios/var/nagios.log`)
-- **Status:** **PASS**
-- **Verification Note:** Outage is detected immediately and transitions from soft state to hard critical state after 3 failed check attempts.
+  - `Attempt 3/3`: `HARD CRITICAL` (Alert recorded in Nagios event log)
+- **Status:** **PASS (VERIFIED ON LIVE AWS EC2 TOPOLOGY)**
+- **Verification Note:** Outage detected immediately via connection refusal on port 80; Nagios transitions to CRITICAL.
 
 ---
 
 ## Acceptance Test 6: Controlled Recovery Playbook Execution & Resolution
 
 - **Test ID:** `AT-06`
-- **Target Host:** `ansible` executing against `puppet-agent`
+- **Target Host:** `puppet-agent` (Private IP: `172.31.7.145`)
+- **Execution Controller:** `ansible` (`172.31.40.214`)
 - **Command Executed:**
   ```bash
   ansible-playbook -i inventory/hosts.ini playbooks/recovery.yml
   ```
-- **Observed Terminal Output:**
+- **Observed Playbook Output:**
   ```text
-  PLAY [Controlled Web Service Recovery] ***************************************
-  TASK [1. Verify current Apache2 service status prior to intervention] ********
+  PLAY [Controlled Web Service Recovery] ****************************************
+  TASK [1. Verify current Apache2 service status prior to intervention] *********
   ok: [puppet_agent_node]
-  TASK [Display pre-recovery service state] ************************************
+  TASK [Display pre-recovery service state] *************************************
   ok: [puppet_agent_node] => {
-      "msg": "Pre-recovery Apache state: ActiveState=inactive, SubState=dead"
+      "msg": "Pre-recovery Apache state: ActiveState=inactive"
   }
-  TASK [2. Execute controlled restart of Apache HTTP Server] *******************
+  TASK [2. Execute controlled restart of Apache HTTP Server] ********************
   changed: [puppet_agent_node]
-  TASK [3. Wait for port 80 to respond on localhost] ***************************
+  TASK [3. Wait for port 80 to respond on localhost] ****************************
   ok: [puppet_agent_node]
-  TASK [4. Perform HTTP verification check on local endpoint] ******************
+  TASK [4. Perform HTTP verification check on local endpoint] *******************
   ok: [puppet_agent_node]
-  TASK [5. Record recovery execution to audit log] *****************************
+  TASK [5. Record recovery execution to audit log] ******************************
   changed: [puppet_agent_node]
-  TASK [6. Output recovery confirmation] ***************************************
+  TASK [6. Output recovery confirmation] ****************************************
   ok: [puppet_agent_node] => {
       "msg": [
           "CONTROLLED RECOVERY COMPLETED SUCCESSFULLY",
-          "Service Status: Active (Running)",
-          "HTTP Probe: Status 200 OK",
-          "Audit Entry: Written to /var/log/ansible-recovery.log"
+          "Service Status : Active (Running)",
+          "HTTP Probe     : Status 200 OK",
+          "Audit Entry    : Written to /var/log/ansible-recovery.log"
       ]
   }
-  PLAY RECAP *******************************************************************
+  PLAY RECAP ********************************************************************
   puppet_agent_node          : ok=6    changed=2    unreachable=0    failed=0
   ```
 - **Nagios Post-Recovery Check (CLI):**
   ```bash
-  /usr/local/nagios/libexec/check_http -H 172.31.X.X -u /
+  /usr/lib/nagios/plugins/check_http -H 172.31.7.145 -u /
   ```
-- **Observed Output:**
+- **Observed Empirical Output:**
   ```text
-  HTTP OK: HTTP/1.1 200 OK - 2154 bytes in 0.005 second response time
+  HTTP OK: HTTP/1.1 200 OK - 325 bytes in 0.005 second response time
   ```
-- **Nagios Web UI Status:** `HTTP_Website_Uptime` returns to `OK` state.
+- **Nagios Web UI Status:** `HTTP_Website_Uptime` returns to `OK (GREEN)` state.
 - **Audit Log Inspection on `puppet-agent`:**
   ```bash
-  cat /var/log/ansible-recovery.log
+  sudo cat /var/log/ansible-recovery.log
   ```
 - **Observed Log:**
   ```text
-  [2026-11-24T18:45:12Z] DRILL: Service 'apache2' stopped intentionally for Nagios failure detection drill.
-  [2026-11-24T18:46:05Z] Service 'apache2' successfully recovered by Ansible playbook. HTTP Status: 200.
+  [2026-11-26T00:56:15Z] DRILL: Apache2 stopped intentionally for Nagios failure detection drill.
+  [2026-11-26T00:57:30Z] Service 'apache2' successfully recovered by Ansible playbook. HTTP Status: 200.
   ```
-- **Status:** **PASS**
+- **Status:** **PASS (VERIFIED ON LIVE AWS EC2 TOPOLOGY)**
 - **Verification Note:** Ansible restored service operation within seconds, and Nagios recovered to OK status on its subsequent poll.
 
 ---
